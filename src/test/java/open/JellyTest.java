@@ -24,6 +24,7 @@ public class JellyTest {
             .add(nothing -> 3, Example.class, Void.class, Integer.class)
             .build(Example.class)
             .getInteger());
+        System.out.println("basicBuild: Success");
     }
 
     @Test
@@ -33,6 +34,7 @@ public class JellyTest {
             .add(nothing -> "Hello", Example.class, Void.class, String.class)
             .build(Example.class)
             .getHello());
+        System.out.println("multipleBuild: Success");
     }
 
     @Test
@@ -42,6 +44,7 @@ public class JellyTest {
             .add(nothing -> 3, Example.class, Void.class, Integer.class)
             .build(Example.class)
             .getInteger());
+        System.out.println("multipleBuild2: Success");
     }
 
     @Test
@@ -50,6 +53,7 @@ public class JellyTest {
             .add(integer -> "Hello" + integer, Example.class, Integer.class, String.class)
             .build(Example.class)
             .getHelloAndInteger(3));
+        System.out.println("singleParameter: Success");
     }
 
     @Test
@@ -58,6 +62,7 @@ public class JellyTest {
             .add(Integer.class, Integer.class, Integer.class, Example.class, (i, j) -> i + j)
             .build(Example.class)
             .add(3, 3));
+        System.out.println("multipleParameters: Success");
     }
 
     @Test
@@ -70,6 +75,7 @@ public class JellyTest {
                     .get())
                 .build(Example.class)
                 .reverse("hello"));
+        System.out.println("reverseString: Success");
     }
 
 }
