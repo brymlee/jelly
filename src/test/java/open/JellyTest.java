@@ -2,8 +2,7 @@ package open;
 
 import org.junit.Test;
 
-import java.util.stream.IntStream;
-
+import static java.util.stream.IntStream.range;
 import static org.junit.Assert.assertEquals;
 
 /**
@@ -11,11 +10,16 @@ import static org.junit.Assert.assertEquals;
  */
 public class JellyTest {
     private interface Example{
+        String multiplyString(String string, Integer integer);
         Integer add(Integer i, Integer j);
         Integer getInteger();
         String getHello();
         String getHelloAndInteger(Integer integer);
         String reverse(String string);
+        String threeParametersConcat(String s, String s2, String s3);
+        String fourParametersConcat(String s, String s2, String s3, String s4);
+        String fiveParametersConcat(String s, String s2, String s3, String s4, String s5);
+        String sixParametersConcat(String s, String s2, String s3, String s4, String s5, String s6);
     }
 
     @Test
@@ -24,7 +28,6 @@ public class JellyTest {
             .add(nothing -> 3, Example.class, Void.class, Integer.class)
             .build(Example.class)
             .getInteger());
-        System.out.println("basicBuild: Success");
     }
 
     @Test
@@ -34,7 +37,6 @@ public class JellyTest {
             .add(nothing -> "Hello", Example.class, Void.class, String.class)
             .build(Example.class)
             .getHello());
-        System.out.println("multipleBuild: Success");
     }
 
     @Test
@@ -44,7 +46,6 @@ public class JellyTest {
             .add(nothing -> 3, Example.class, Void.class, Integer.class)
             .build(Example.class)
             .getInteger());
-        System.out.println("multipleBuild2: Success");
     }
 
     @Test
@@ -53,29 +54,77 @@ public class JellyTest {
             .add(integer -> "Hello" + integer, Example.class, Integer.class, String.class)
             .build(Example.class)
             .getHelloAndInteger(3));
-        System.out.println("singleParameter: Success");
     }
 
     @Test
-    public void multipleParameters(){
+    public void twoParameters(){
         assertEquals((Integer) 6, new Jelly()
             .add(Integer.class, Integer.class, Integer.class, Example.class, (i, j) -> i + j)
             .build(Example.class)
             .add(3, 3));
-        System.out.println("multipleParameters: Success");
+    }
+
+    @Test
+    public void twoParametersMultiplyConcat(){
+        assertEquals("HelloHello", new Jelly()
+            .add(String.class, Integer.class, String.class, Example.class, (string, integer) -> range(0, string.length() * integer)
+                .mapToObj(i -> String.valueOf(string.charAt(i % string.length())))
+                .reduce((i, j) -> i.concat(j))
+                .get())
+            .build(Example.class)
+            .multiplyString("Hello", 2));
+    }
+
+    @Test
+    public void threeParametersConcat(){
+        assertEquals("HelloByeGoodbye", new Jelly()
+            .add(String.class, String.class, String.class, String.class, Example.class, (s, s1, s2) -> s.concat(s1).concat(s2))
+            .build(Example.class)
+            .threeParametersConcat("Hello", "Bye", "Goodbye"));
+    }
+
+    @Test
+    public void fourParametersConcat(){
+        assertEquals("HelloByeGoodbyeHello", new Jelly()
+            .add(String.class, String.class, String.class, String.class, String.class, Example.class, (s, s1, s2, s3) -> s.concat(s1)
+                .concat(s2)
+                .concat(s3))
+            .build(Example.class)
+            .fourParametersConcat("Hello", "Bye", "Goodbye", "Hello"));
+    }
+
+    @Test
+    public void fiveParametersConcat(){
+        assertEquals("HelloByeGoodbyeHelloBye", new Jelly()
+            .add(String.class, String.class, String.class, String.class, String.class, String.class, Example.class, (s, s1, s2, s3, s4) -> s.concat(s1)
+                .concat(s2)
+                .concat(s3)
+                .concat(s4))
+            .build(Example.class)
+            .fiveParametersConcat("Hello", "Bye", "Goodbye", "Hello", "Bye"));
+    }
+
+    @Test
+    public void sixParametersConcat(){
+        assertEquals("HelloByeGoodbyeHelloByeGoodbye", new Jelly()
+            .add(String.class, String.class, String.class, String.class, String.class, String.class, String.class, Example.class, (s, s1, s2, s3, s4, s5) -> s.concat(s1)
+                .concat(s2)
+                .concat(s3)
+                .concat(s4)
+                .concat(s5))
+            .build(Example.class)
+            .sixParametersConcat("Hello", "Bye", "Goodbye", "Hello", "Bye", "Goodbye"));
     }
 
     @Test
     public void reverseString(){
         assertEquals("olleh", new Jelly()
-            .add(String.class, String.class, Example.class, string -> IntStream.range(0, string.length())
-                    .map(index -> (string.length() - 1) - index)
-                    .mapToObj(index -> "" + string.charAt(index))
-                    .reduce((i, j) -> i.concat(j))
-                    .get())
-                .build(Example.class)
-                .reverse("hello"));
-        System.out.println("reverseString: Success");
+            .add(String.class, String.class, Example.class, string -> range(0, string.length())
+                .map(index -> (string.length() - 1) - index)
+                .mapToObj(index -> "" + string.charAt(index))
+                .reduce((i, j) -> i.concat(j))
+                .get())
+            .build(Example.class)
+            .reverse("hello"));
     }
-
 }

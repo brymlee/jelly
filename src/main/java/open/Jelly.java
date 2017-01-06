@@ -1,5 +1,6 @@
 package open;
 
+import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
@@ -31,15 +32,85 @@ public class Jelly {
 
         default Function<Object, Object> genericFunction(){
             return parameters -> {
-                checkArgument(parameters instanceof Map);
-                final Set<Map.Entry<String, Object>> parametersAsSet = ((Map<String, Object>) parameters).entrySet();
-                checkArgument(parametersAsSet.size() == 2);
-                Iterator<Map.Entry<String, Object>> iterator = parametersAsSet.iterator();
-                final Object firstParameter = iterator.next().getValue();
-                final Object secondParameter = iterator.next().getValue();
-                return (T2) function((T) firstParameter, (T1) secondParameter);
+                checkArgument(parameters instanceof List);
+                final List<Object> parametersAsList = (List<Object>) parameters;
+                checkArgument(parametersAsList.size() == 2);
+                return (T2) function((T) parametersAsList.get(0), (T1) parametersAsList.get(1));
             };
         }
+    }
+
+    @FunctionalInterface
+    public interface Function3<T, T1, T2, T3>{
+        T3 function(T t, T1 t1, T2 t2);
+
+        default Function<Object, Object> genericFunction(){
+            return parameters -> {
+                checkArgument(parameters instanceof List);
+                final List<Object> parametersAsList = (List<Object>) parameters;
+                checkArgument(parametersAsList.size() == 3);
+                return (T3) function((T) parametersAsList.get(0), (T1) parametersAsList.get(1), (T2) parametersAsList.get(2));
+            };
+        }
+    }
+
+    @FunctionalInterface
+    public interface Function4<T, T1, T2, T3, T4>{
+        T4 function(T t, T1 t1, T2 t2, T3 t3);
+
+        default Function<Object, Object> genericFunction(){
+            return parameters -> {
+                checkArgument(parameters instanceof List);
+                final List<Object> parametersAsList = (List<Object>) parameters;
+                checkArgument(parametersAsList.size() == 4);
+                return (T4) function((T) parametersAsList.get(0),
+                                     (T1) parametersAsList.get(1),
+                                     (T2) parametersAsList.get(2),
+                                     (T3) parametersAsList.get(3));
+            };
+        }
+    }
+
+    @FunctionalInterface
+    public interface Function5<T, T1, T2, T3, T4, T5>{
+        T5 function(T t, T1 t1, T2 t2, T3 t3, T4 t4);
+
+        default Function<Object, Object> genericFunction(){
+            return parameters -> {
+                checkArgument(parameters instanceof List);
+                final List<Object> parametersAsList = (List<Object>) parameters;
+                checkArgument(parametersAsList.size() == 5);
+                return (T5) function((T) parametersAsList.get(0),
+                        (T1) parametersAsList.get(1),
+                        (T2) parametersAsList.get(2),
+                        (T3) parametersAsList.get(3),
+                        (T4) parametersAsList.get(4));
+            };
+        }
+    }
+
+    @FunctionalInterface
+    public interface Function6<T, T1, T2, T3, T4, T5, T6>{
+        T6 function(T t, T1 t1, T2 t2, T3 t3, T4 t4, T5 t5);
+
+        default Function<Object, Object> genericFunction(){
+            return parameters -> {
+                checkArgument(parameters instanceof List);
+                final List<Object> parametersAsList = (List<Object>) parameters;
+                checkArgument(parametersAsList.size() == 6);
+                return (T6) function((T) parametersAsList.get(0),
+                        (T1) parametersAsList.get(1),
+                        (T2) parametersAsList.get(2),
+                        (T3) parametersAsList.get(3),
+                        (T4) parametersAsList.get(4),
+                        (T5) parametersAsList.get(5));
+            };
+        }
+    }
+
+    public <T, T1, T2> Jelly add(Class<T> firstType, Class<T1> secondType, Class<T2> bindableClass, Function<T, T1> function){
+        add((Function<Object, Object>) function, bindableClass, firstType, secondType);
+        return this;
     }
 
     public <T, T1, T2, T3> Jelly add(Class<T> firstType, Class<T1> secondType, Class<T2> thirdType, Class<T3> bindableClass, Function2<T, T1, T2> function){
@@ -47,8 +118,49 @@ public class Jelly {
         return this;
     }
 
-    public <T, T1, T2> Jelly add(Class<T> firstType, Class<T1> secondType, Class<T2> bindableClass, Function<T, T1> function){
-        add((Function<Object, Object>) function, bindableClass, firstType, secondType);
+    public <T, T1, T2, T3, T4> Jelly add(Class<T> firstType,
+                                         Class<T1> secondType,
+                                         Class<T2> thirdType,
+                                         Class<T3> fourthType,
+                                         Class<T4> bindableClass,
+                                         Function3<T, T1, T2, T3> function){
+        add(function.genericFunction(), bindableClass, firstType, secondType, thirdType, fourthType);
+        return this;
+    }
+
+    public <T, T1, T2, T3, T4, T5> Jelly add(Class<T> firstType,
+                                         Class<T1> secondType,
+                                         Class<T2> thirdType,
+                                         Class<T3> fourthType,
+                                         Class<T4> fifthType,
+                                         Class<T5> bindableClass,
+                                         Function4<T, T1, T2, T3, T4> function){
+        add(function.genericFunction(), bindableClass, firstType, secondType, thirdType, fourthType, fifthType);
+        return this;
+    }
+
+    public <T, T1, T2, T3, T4, T5, T6> Jelly add(Class<T> firstType,
+                                             Class<T1> secondType,
+                                             Class<T2> thirdType,
+                                             Class<T3> fourthType,
+                                             Class<T4> fifthType,
+                                             Class<T5> sixthType,
+                                             Class<T6> bindableClass,
+                                             Function5<T, T1, T2, T3, T4, T5> function){
+        add(function.genericFunction(), bindableClass, firstType, secondType, thirdType, fourthType, fifthType, sixthType);
+        return this;
+    }
+
+    public <T, T1, T2, T3, T4, T5, T6, T7> Jelly add(Class<T> firstType,
+                                                 Class<T1> secondType,
+                                                 Class<T2> thirdType,
+                                                 Class<T3> fourthType,
+                                                 Class<T4> fifthType,
+                                                 Class<T5> sixthType,
+                                                 Class<T6> seventhType,
+                                                 Class<T7> bindableClass,
+                                                 Function6<T, T1, T2, T3, T4, T5, T6> function){
+        add(function.genericFunction(), bindableClass, firstType, secondType, thirdType, fourthType, fifthType, sixthType, seventhType);
         return this;
     }
 
@@ -164,7 +276,7 @@ public class Jelly {
                 throw new RuntimeException(exception);
             }
         }else{
-            final Set<Map.Entry<Object, Object>> parameters = range(0, jsonArray.size())
+            final List<Object> parameters = range(0, jsonArray.size())
                 .mapToObj(index -> {
                     final byte[] bytes = Base64.getDecoder().decode(jsonArray
                         .get(index)
@@ -173,21 +285,12 @@ public class Jelly {
                         .getAsString()
                         .getBytes());
                     try{
-                        return new ImmutableMap.Builder<>()
-                            .put(index + "", new ObjectInputStream(new ByteArrayInputStream(bytes)).readObject())
-                            .build()
-                            .entrySet()
-                            .stream()
-                            .reduce((i, j) -> i)
-                            .get();
+                        return new ObjectInputStream(new ByteArrayInputStream(bytes)).readObject();
                     }catch(Exception exception){
                         throw new RuntimeException(exception);
                     }
-                }).collect(Collectors.toSet());
-            final ImmutableMap<Object, Object> parametersAsImmutableMap = new ImmutableMap.Builder<>()
-                    .putAll(parameters)
-                    .build();
-            return function.apply(parametersAsImmutableMap);
+                }).collect(Collectors.toList());
+            return function.apply(parameters);
         }
     }
 
