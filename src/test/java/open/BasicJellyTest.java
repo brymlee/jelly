@@ -8,7 +8,7 @@ import static org.junit.Assert.assertEquals;
 /**
  * Created by ubuntulaptop on 12/28/16.
  */
-public class JellyTest {
+public class BasicJellyTest {
     private interface Example{
         String multiplyString(String string, Integer integer);
         Integer add(Integer i, Integer j);
