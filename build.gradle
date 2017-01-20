@@ -1,12 +1,85 @@
-group 'jelly'
-version '1.0-SNAPSHOT'
+group 'io.github.brymlee'
+version '0.1-RC2'
 
 apply plugin: 'java'
+apply plugin: 'maven'
+apply plugin: 'signing'
 
 sourceCompatibility = 1.8
 
 repositories {
     mavenCentral()
+}
+
+task javadocJar(type: Jar){
+    classifier = 'javadoc'
+    from javadoc
+}
+
+/*task sourcesJar(type: Jar){
+    classifier = 'sources'
+    from sourceSets.main.allSource
+}*/
+
+task sourcesJar(type: Jar){
+    classifier = 'sources'
+    baseName = project.name
+    from { configurations.compile.collect{ it.isDirectory() ? it : zipTree(it) } }
+    with jar
+}
+
+artifacts{
+    archives javadocJar, sourcesJar
+}
+
+signing{
+    sign configurations.archives
+}
+
+uploadArchives{
+    repositories{
+        mavenDeployer{
+            beforeDeployment{
+                MavenDeployment deployment -> signing.signPom(deployment)
+            }
+
+            repository(url: 'https://oss.sonatype.org/service/local/staging/deploy/maven2'){
+                authentication(userName: ossrhUsername, password: ossrhPassword)
+            }
+
+            /*snapshotRepository(url: 'https://oss.sonatype.org/content/repositories/snapshots/'){
+                authentication(userName: ossrhUsername, password: ossrhPassword)
+            }*/
+
+            pom.project{
+                name 'jelly'
+                packaging 'jar'
+                description 'Java Functional Metaprogramming API'
+                url 'https://github.com/brymlee/jelly'
+
+                scm{
+                    connection 'scm:git:https://github.com/brymlee/jelly.git'
+                    developerConnection 'scm:git:https://github.com/brymlee/jelly.git'
+                    url 'https://github.com/brymlee/jelly.git'
+                }
+
+                licenses{
+                    license{
+                        name 'GNU GENERAL PUBLIC LICENSE'
+                        url 'https://github.com/brymlee/jelly/blob/master/LICENSE'
+                    }
+                }
+
+                developers{
+                    developer{
+                        id 'brymlee'
+                        name 'Evan Kimberlin'
+                        email 'brymlee1911@gmail.com'
+                    }
+                }
+            }
+        }
+    }
 }
 
 dependencies {
@@ -15,4 +88,7 @@ dependencies {
     compile group: 'com.google.code.gson', name: 'gson', version: '2.0'
     compile group: 'org.apache.commons', name: 'commons-lang3', version: '3.4'
     compile group: 'javax.json', name: 'javax.json-api', version: '1.0'
+    testCompile group: 'org.springframework', name: 'spring-core', version: '4.2.4.RELEASE'
+    testCompile group: 'org.springframework', name: 'spring-context', version: '4.2.4.RELEASE'
+    testCompile group: 'org.springframework', name: 'spring-test', version: '4.2.4.RELEASE'
 }

@@ -1,6 +1,5 @@
 package open;
 
-import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
@@ -221,7 +220,6 @@ public class Jelly {
         return this;
     }
 
-
     public static String chainClassNames(List<Class<?>> classes, Class<?> clazz){
         Class<?>[] array = new Class<?>[classes.size() + 1];
         range(0, array.length)
@@ -243,14 +241,19 @@ public class Jelly {
             .trim();
     }
 
+    public static boolean isFunctionMatch(ImmutableMap.Builder<String, Function<Object, Object>> functions, Method method, String functionKey){
+        return functions != null
+            && functions.build().get(functionKey) != null
+            && !"toString".equals(method.getName())
+            && !"equals".equals(method.getName())
+            && !"hashCode".equals(method.getName())
+            && !"notify".equals(method.getName())
+            && !"notifyAll".equals(method.getName())
+            && !"wait".equals(method.getName());
+    }
+
     private boolean isFunctionMatch(Method method, String functionKey){
-       return this.functions.build().get(functionKey) != null
-           && !"toString".equals(method.getName())
-           && !"equals".equals(method.getName())
-           && !"hashCode".equals(method.getName())
-           && !"notify".equals(method.getName())
-           && !"notifyAll".equals(method.getName())
-           && !"wait".equals(method.getName());
+        return isFunctionMatch(this.functions, method, functionKey);
     }
 
     private Object genericInvocation(String functionParametersAsJson, List<String> functionParametersAsString, Function<Object, Object> function){

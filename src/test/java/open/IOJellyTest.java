@@ -3,8 +3,9 @@ package open;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import org.apache.commons.lang3.builder.EqualsBuilder;
+import org.junit.Ignore;
 import org.junit.Test;
-import java.io.InputStream;
+
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -15,7 +16,7 @@ import static org.junit.Assert.assertTrue;
 /**
  * Created by ubuntulaptop on 1/6/17.
  */
-//Integration Tests : These tests may require databases to be set up or the underlying system to be configured appropriately.
+//Integration Tests : These tests may require databases to be value up or the underlying system to be configured appropriately.
 //DON'T EXPECT THESE TESTS TO PASS IF YOU DON'T HAVE EVERYTHING SET UP. THEY ARE NOT UNIT TESTS.
 public class IOJellyTest {
 
@@ -34,27 +35,7 @@ public class IOJellyTest {
         }
     }
 
-    @FunctionalInterface
-    private interface MongoFindCommand{
-        JsonObject query();
-        default String runCommand(){
-            try{
-                Process process = Runtime
-                    .getRuntime()
-                    .exec(new String[]{"mongo", "example", "--quiet", "--eval", "db.example.person.find({query})"
-                        .replaceAll("\\{query}", query() == null ? "" : query().toString())});
-                process.waitFor();
-                InputStream inputStream = process.getInputStream();
-                byte[] bytes = new byte[inputStream.available()];
-                inputStream.read(bytes);
-                inputStream.close();
-                return new String(bytes);
-            }catch(Exception exception){
-                throw new RuntimeException(exception);
-            }
-        }
-    }
-
+    @Ignore
     @Test
     public void getPersonHello(){
         final Person expectedPerson = (Person) () -> "hello";
@@ -80,6 +61,7 @@ public class IOJellyTest {
         assertTrue(expectedPerson.equals(actualPerson));
     }
 
+    @Ignore
     @Test
     public void getAllPeople(){
         final List<Person> list = new Jelly()
