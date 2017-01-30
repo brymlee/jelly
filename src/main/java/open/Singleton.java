@@ -10,16 +10,20 @@ import java.util.List;
 public interface Singleton extends Type{
     Class<?> clazz();
 
-    default boolean exists(Singleton singleton){
-        return singleton.clazz().getName().equals(this.clazz().getName());
+    default Type exists(BoundSingleton boundSingleton){
+        return null;
     }
 
-    default boolean exists(Composition composition){
-        return false;
+    default Type exists(Singleton singleton){
+        return singleton.clazz().getName().equals(this.clazz().getName()) ? this : null;
     }
 
-    default boolean exists(Class<?> clazz){
-        return exists((Singleton) () -> clazz);
+    default Type exists(Composition composition){
+        return null;
+    }
+
+    default Type exists(Class<?> clazz){
+        return this.clazz().getName().equals(clazz.getName()) ? this : null;
     }
 
     default List<Type> types(){

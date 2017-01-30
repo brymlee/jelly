@@ -1,12 +1,24 @@
 package open;
 
-import com.google.common.collect.ImmutableMap;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
+import open.CustomPredicate.CannotBe;
 import org.junit.Test;
+
+import java.io.InputStream;
+import java.util.List;
 import java.util.Map;
 import java.util.function.Predicate;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 import static java.util.Arrays.asList;
-import static org.junit.Assert.assertEquals;
+import static java.util.stream.Collectors.toList;
+import static java.util.stream.IntStream.range;
+import static open.CustomPredicate.entry;
+import static org.junit.Assert.*;
 
 /**
  * Created by ubuntulaptop on 1/15/17.
@@ -20,8 +32,8 @@ public class TypeTest {
 
     @Test
     public void typeExistsSingletonComplextType(){
-        assertEquals(true, ((Type) () -> asList((Singleton) () -> Integer.class)).exists(Integer.class));
-        assertEquals(false, ((Type) () -> asList((Singleton) () -> Integer.class)).exists(Float.class));
+        assertEquals(true, ((Type) () -> asList((Singleton) () -> Integer.class)).exists((Singleton) () -> Integer.class));
+        assertEquals(false, ((Type) () -> asList((Singleton) () -> Integer.class)).exists((Singleton) () -> Float.class));
     }
 
     @Test
@@ -34,58 +46,64 @@ public class TypeTest {
     }
 
     @Test
-    public void personType(){
-        final Type personType = (Type) () -> asList((Singleton) () -> String.class, (Singleton) () -> Integer.class);
-        assertEquals(true, personType.exists(String.class));
-        assertEquals(true, personType.exists(Integer.class));
-        assertEquals(false, personType.exists(Float.class));
-        final Type person = personType
-            .value(String.class, "John Smith")
-            .value(Integer.class, 24);
-        assertEquals("John Smith", person.value(String.class));
-        assertEquals(Integer.valueOf(24), person.value(Integer.class));
-    }
-
-    @Test
-    public void personComplexType(){
-        final BoundSingleton<String> nameType = () -> entry(String.class, asList((Predicate<String>) (string) -> string.length() < 5));
-        final BoundSingleton<Integer> ageType = () -> entry(Integer.class, asList((Predicate<Integer>) (integer) -> integer.intValue() < 30));
-        final Type personType = () -> asList(ageType, nameType);
-        final Type person = personType
-            .value(String.class, "John")
-            .value(Integer.class, 24);
-        assertEquals("John", person.value(String.class));
-        assertEquals(Integer.valueOf(24), person.value(Integer.class));
-    }
-
-    @Test(expected = RuntimeException.class)
-    public void personComplexTypeFail1(){
-        final BoundSingleton<String> nameType = () -> entry(String.class, asList((Predicate<String>) (string) -> string.length() < 5));
-        final BoundSingleton<Integer> ageType = () -> entry(Integer.class, asList((Predicate<Integer>) (integer) -> integer.intValue() < 30));
-        final Type personType = () -> asList(ageType, nameType);
-        final Type person = personType
-            .value(String.class, "John")
-            .value(Integer.class, 30);
-    }
-
-    @Test(expected = RuntimeException.class)
-    public void personComplexTypeFail2(){
-        final BoundSingleton<String> nameType = () -> entry(String.class, asList((Predicate<String>) (string) -> string.length() < 5));
-        final BoundSingleton<Integer> ageType = () -> entry(Integer.class, asList((Predicate<Integer>) (integer) -> integer.intValue() < 30));
-        final Type personType = () -> asList(ageType, nameType);
-        final Type person = personType
-            .value(String.class, "John Madden")
-            .value(Integer.class, 24);
-    }
-
-    public static <T, T1> Map.Entry<T, T1> entry(T t, T1 t1){
-        return new ImmutableMap.Builder<T, T1>()
-            .put(t, t1)
-            .build()
-            .entrySet()
-            .stream()
-            .reduce((i, j) -> i)
-            .get();
+    public void jsonToType(){
+        try{
+            InputStream inputStream = this.getClass().getResourceAsStream("personType.json");
+            byte[] bytes = new byte[inputStream.available()];
+            inputStream.read(bytes);
+            inputStream.close();
+            final JsonObject personTypeJson = new JsonParser()
+                .parse(new String(bytes))
+                .getAsJsonObject();
+            final JsonArray personTypesJson = personTypeJson
+                .get("_types")
+                .getAsJsonArray();
+            final Type personType = (Type) () -> range(0, personTypesJson.size())
+                .mapToObj(index -> {
+                    final String key = personTypesJson.get(index).getAsJsonObject().get(index + "").getAsString();
+                    final JsonObject currentType = personTypeJson.get(key).getAsJsonObject();
+                    final JsonArray cannotBe = currentType.get("cannotBe").getAsJsonArray();
+                    switch(currentType.get("base").getAsString().toLowerCase()){
+                        case "integer" :
+                            if(cannotBe.size() > 0){
+                                final CustomPredicate<Integer> customPredicate = new CustomPredicate<>(Integer.class)
+                                    .addAll(range(0, cannotBe.size())
+                                        .mapToObj(i -> cannotBe.get(i).getAsString())
+                                        .map(string -> (CannotBe<Integer>) () ->  Integer.valueOf(string))
+                                        .collect(toList()));
+                                return (BoundSingleton<Integer>) () -> entry(Integer.class, customPredicate);
+                            }
+                            throw new RuntimeException();
+                        case "string" :
+                            if(cannotBe.size() > 0){
+                                final CustomPredicate<String> customPredicate = new CustomPredicate<>(String.class)
+                                    .addAll(range(0, cannotBe.size())
+                                        .mapToObj(i -> cannotBe.get(i).getAsString())
+                                        .map(string -> (CannotBe<String>) () ->  string)
+                                        .collect(toList()));
+                                return (BoundSingleton<String>) () -> entry(String.class, customPredicate);
+                            }
+                        default :
+                            throw new RuntimeException();
+                    }
+                }).collect(toList());
+            final BoundSingleton<Integer> ageType = (BoundSingleton<Integer>) () -> entry(Integer.class, new CustomPredicate<>(Integer.class)
+                .cannotBe(Integer.class, 24)
+                .cannotBe(Integer.class, 23));
+            final BoundSingleton<String> nameType = (BoundSingleton<String>) () -> entry(String.class, new CustomPredicate<>(String.class)
+                .cannotBe(String.class, "hello"));
+            assertNotNull(personType.exists(ageType));
+            assertNull(personType.exists((BoundSingleton<Integer>) () -> entry(Integer.class, new CustomPredicate<>(Integer.class)
+                    .cannotBe(Integer.class, 23))));
+            assertNotNull(personType.exists(nameType));
+            assertNull(personType.exists((BoundSingleton<String>) () -> entry(String.class, new CustomPredicate<>(String.class)
+                .cannotBe(String.class, "hell"))));
+            assertNull(personType.value(ageType, 23).value(ageType));
+            assertNull(personType.value(ageType, 24).value(ageType));
+            assertEquals(Integer.valueOf(25), personType.value(ageType, 25).value(ageType));
+        }catch(Exception exception){
+            throw new RuntimeException(exception);
+        }
     }
 
 }

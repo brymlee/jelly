@@ -1,29 +1,26 @@
 package open;
 
-import com.google.common.collect.FluentIterable;
-import com.google.common.collect.ImmutableCollection;
-import com.google.common.collect.ImmutableList;
-import com.google.common.collect.ImmutableMap;
-
 import java.util.List;
-import java.util.Optional;
-import java.util.function.Predicate;
 import java.util.stream.Collectors;
+
+import static open.CustomPredicate.entry;
 
 /**
  * Created by ubuntulaptop on 1/15/17.
  */
 public interface Type {
     List<Type> types();
-    default boolean exists(Type targetType){
-        return types()
+    default Type exists(Type targetType){
+        final List<Type> types = types()
             .stream()
-            .filter(type -> {
+            .map(type -> {
                 if(targetType instanceof Singleton){
-                    if(type instanceof  Singleton){
+                    if(type instanceof Singleton){
                         return ((Singleton) type).exists((Singleton) targetType);
                     }else if(type instanceof Composition){
                         return ((Composition) type).exists((Singleton) targetType);
+                    }else if(type instanceof BoundSingleton){
+                        return ((BoundSingleton) type).exists((Singleton) targetType);
                     }
                     throw new RuntimeException();
                 }else if(targetType instanceof Composition){
@@ -31,74 +28,53 @@ public interface Type {
                         return ((Singleton) type).exists((Composition) targetType);
                     }else if(type instanceof  Composition){
                         return ((Composition) type).exists((Composition) targetType);
+                    }else if(type instanceof BoundSingleton){
+                        return ((BoundSingleton) type).exists((Composition) targetType);
+                    }
+                    throw new RuntimeException();
+                }else if(targetType instanceof BoundSingleton){
+                    if(type instanceof Singleton){
+                        return ((Singleton) type).exists((BoundSingleton) targetType);
+                    }else if(type instanceof  Composition){
+                        return ((Composition) type).exists((BoundSingleton) targetType);
+                    }else if(type instanceof BoundSingleton){
+                        return ((BoundSingleton) type).exists((BoundSingleton) targetType);
                     }
                     throw new RuntimeException();
                 }else{
                     throw new RuntimeException();
                 }
-            }).count() > 0;
+            }).filter(type -> type != null)
+            .collect(Collectors.toList());
+        if(types.size() == 1){
+            return types.get(0);
+        }else{
+            return null;
+        }
+
     }
 
-    default BoundSingleton boundSingleton(Class<?> clazz){
-        Optional<BoundSingleton> boundSingleton = types()
-            .stream()
-            .filter(type -> {
-                if (type instanceof BoundSingleton) {
-                    return ((BoundSingleton) type).clazz().getName().equals(clazz.getName());
-                }
-                return false;
-            }).map(type -> ((BoundSingleton) type))
-            .reduce((i, j) -> i);
-        if(boundSingleton.isPresent()){
-            return boundSingleton.get();
+    default <T> Type value(BoundSingleton<T> boundSingleton, T t){
+        final BoundSingleton<T> boundSingletonToChange = (BoundSingleton<T>) exists(boundSingleton);
+        if(boundSingletonToChange != null){
+            return () -> types()
+                .stream()
+                .map(type -> {
+                    if(type instanceof BoundSingleton
+                    && ((BoundSingleton) type).is(boundSingletonToChange.boundClazz().getValue()) != null
+                    && boundSingletonToChange.boundClazz().getValue().apply(t)){
+                       return (InstantiatedBoundSingleton<T>) () -> entry(boundSingletonToChange, t);
+                    }
+                    return type;
+                }).collect(Collectors.toList());
         }
         return null;
     }
 
-    default boolean exists(Class<?> clazz){
-        return exists((Singleton) () -> clazz);
-    }
-
-    default <T> Type value(Class<T> clazz, T t){
-        if(exists(clazz)){
-            BoundSingleton<T> boundSingleton;
-            if((boundSingleton = boundSingleton(clazz)) != null
-            && boundSingleton
-                .boundClazz()
-                .getValue()
-                .stream()
-                .filter(predicate -> predicate.test(t))
-                .count() != boundSingleton.boundClazz().getValue().size()){
-                throw new RuntimeException();
-            }
-            return (Type) () -> new ImmutableList.Builder<Type>()
-                .addAll(types()
-                    .stream()
-                    .filter(type -> !(type instanceof Singleton) || !((Singleton) type).clazz().getName().equals(clazz.getName()))
-                    .collect(Collectors.toList()))
-                .add((InstantiatedSingleton) () -> new ImmutableMap.Builder<Singleton, Object>()
-                    .put((Singleton) () -> clazz, t)
-                    .build()
-                    .entrySet()
-                    .stream()
-                    .reduce((i, j) -> i)
-                .get())
-                .build();
-        }
-        return (Type) () -> types();
-    }
-
-    default <T> T value(Class<T> clazz){
-        if(exists(clazz)){
-            return (T) types()
-                .stream()
-                .filter(type -> type instanceof InstantiatedSingleton
-                    && ((InstantiatedSingleton) type).clazz().getName().equals(clazz.getName()))
-                .map(type -> ((InstantiatedSingleton) type))
-                .reduce((i, j) -> i)
-                .get()
-                .value()
-                .getValue();
+    default <T> T value(BoundSingleton<T> expectedBoundSingleton){
+        final BoundSingleton<T> actualBoundSingleton = (BoundSingleton<T>) exists(expectedBoundSingleton);
+        if(actualBoundSingleton instanceof InstantiatedBoundSingleton){
+            return ((InstantiatedBoundSingleton<T>) actualBoundSingleton).instantiated().getValue();
         }
         return null;
     }
