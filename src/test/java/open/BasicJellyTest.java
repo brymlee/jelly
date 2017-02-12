@@ -1,9 +1,16 @@
 package open;
 
+import open.CustomPredicate.CannotBe;
+import open.CustomPredicate.GreaterThan;
+import open.CustomPredicate.MustContain;
 import org.junit.Test;
 
+import static java.util.Arrays.asList;
 import static java.util.stream.IntStream.range;
+import static open.CustomPredicate.entry;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 
 /**
  * Created by ubuntulaptop on 12/28/16.
@@ -127,4 +134,71 @@ public class BasicJellyTest {
             .build(Example.class)
             .reverse("hello"));
     }
+
+    public interface PersonTypeExampleInterface{
+        @PredicateInterfaces( predicateTypes = {MustContain.class, MustContain.class, MustContain.class, MustContain.class, MustContain.class}
+                             ,predicateValues ={"h"              , "e"              , "l"              , "l"              , "o"})
+        String reverseHello(String string);
+
+        @PredicateInterfaces( predicateTypes = {GreaterThan.class}
+                             ,predicateValues ={"2"})
+        Integer add(Integer x, Integer y);
+
+        @PredicateInterfaces( predicateTypes = {MustContain.class, CannotBe.class}
+                             ,predicateValues ={"hello", "goodbye"})
+        String getString(String string);
+
+    }
+
+    @Test
+    public void predicateJellyReverseString(){
+        //final BoundSingleton<String> nameType = () -> entry(String.class, new CustomPredicate<>(String.class)
+        //        .mustContain(String.class, asList("h", "e", "l", "l", "o")));
+        final PersonTypeExampleInterface personTypeExampleInterface = new Jelly()
+            .add(String.class, String.class, PersonTypeExampleInterface.class, string -> range(0, string.length())
+                .map(index -> (string.length() - 1) - index)
+                .mapToObj(index -> "" + string.charAt(index))
+                .reduce((i, j) -> i.concat(j))
+                .get())
+            .build(PersonTypeExampleInterface.class);
+        assertEquals("olleh", personTypeExampleInterface.reverseHello("hello"));
+        try{
+            assertEquals("olleh", personTypeExampleInterface.reverseHello("bob"));
+            assertFalse(true);
+        }catch(RuntimeException runtimeException){
+            assertTrue(true);
+        }
+    }
+
+    @Test
+    public void predicateJellyAddIntegers(){
+        final PersonTypeExampleInterface personTypeExampleInterface  = new Jelly()
+            .add(Integer.class, Integer.class, Integer.class, PersonTypeExampleInterface.class, (x, y) -> x + y)
+            .build(PersonTypeExampleInterface.class);
+        assertEquals(Integer.valueOf(3), personTypeExampleInterface.add(1, 2));
+        try{
+            assertEquals(Integer.valueOf(1), personTypeExampleInterface.add(0, 1));
+            assertFalse(true);
+        }catch(RuntimeException runtimeException){
+            assertTrue(true);
+        }
+    }
+
+    @Test
+    public void predicateJellyGetString(){
+        final PersonTypeExampleInterface personTypeExampleInterface = new Jelly()
+            .add(String.class, String.class, PersonTypeExampleInterface.class, (string) -> range(0, 3)
+                .mapToObj(index -> string)
+                .reduce((i, j) -> i.concat(j))
+                .get())
+            .build(PersonTypeExampleInterface.class);
+        assertEquals("hellohellohello", personTypeExampleInterface.getString("hello"));
+        try{
+            assertEquals("goodbyegoodbyegoodbye", personTypeExampleInterface.getString("goodbye"));
+            assertFalse(true);
+        }catch(RuntimeException runtimeException){
+            assertTrue(true);
+        }
+    }
+
 }

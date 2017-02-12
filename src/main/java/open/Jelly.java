@@ -4,18 +4,23 @@ import com.google.common.collect.ImmutableMap;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+import open.CustomPredicate.PredicateInterface;
+
 import java.io.*;
+import java.lang.annotation.Annotation;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
 import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static java.util.Arrays.asList;
 import static java.util.stream.Collectors.toList;
 import static java.util.stream.IntStream.range;
+import static open.CustomPredicate.entry;
 
 /**
  * Created by ubuntulaptop on 12/28/16.
@@ -23,7 +28,7 @@ import static java.util.stream.IntStream.range;
 public class Jelly {
     private ImmutableMap.Builder<String, Function<Object, Object>> functions = new ImmutableMap.Builder<>();
     private ImmutableMap.Builder<String, Object> bindables = new ImmutableMap.Builder<>();
-
+    private ImmutableMap.Builder<String, CustomPredicate> customPredicatesBuilder = new ImmutableMap.Builder<>();
 
     @FunctionalInterface
     public interface Function2<T, T1, T2>{
@@ -163,6 +168,23 @@ public class Jelly {
         return this;
     }
 
+    /*public <T, T1, T2> Jelly add(Class<T> firstType,
+                                 BoundSingleton<T1> secondType,
+                                 Class<T2> bindableType,
+                                 Function<T, T1> function){
+        //final List<Map.Entry<Class<? extends PredicateInterface>, T1>> entry = secondType.boundClazz().getValue().id();
+        this.customPredicatesBuilder = this.customPredicatesBuilder
+            .put(chainClassNames(secondType
+                .boundClazz()
+                .getValue()
+                .id()
+                .stream()
+                .map(i -> i.getKey())
+                .collect(Collectors.toList())), secondType.boundClazz().getValue());
+        add((Function<Object, Object>) function, bindableType, firstType, secondType.clazz());
+        return this;
+    }*/
+
     public <T> Jelly add(Function<Object, Object> function, Class<T> bindableClass, Class<?> ... classes){
         this.functions = this.functions.put(chainClassNames(asList(classes)), function);
         if(!this.bindables.build().containsKey(bindableClass.getName())){
@@ -207,7 +229,30 @@ public class Jelly {
                     });
                     JsonObject jsonObject = new JsonObject();
                     jsonObject.add("parameters", jsonArray);
-                    return genericInvocation(jsonObject.toString(), functionParametersAsString, functions.build().get(functionKey));
+                    final Annotation[] annotations = method.getDeclaredAnnotations();
+                    final List<PredicateInterfaces> matchedAnnotations = IntStream.range(0, annotations.length)
+                        .mapToObj(i -> {
+                            return annotations[i] instanceof PredicateInterfaces
+                                ? (PredicateInterfaces) annotations[i]
+                                : null;
+                        })
+                        .filter(i -> i != null)
+                        .collect(Collectors.toList());
+                    final PredicateInterfaces matchedAnnotation = matchedAnnotations.size() > 0 ? matchedAnnotations.get(0) : null;
+                    if(matchedAnnotation != null){
+                        final CustomPredicate customPredicate = CustomPredicate.getPredicate(matchedAnnotation);
+                        if(customPredicate != null){
+                            final Function<Object, Object> predicateWrappedFunction = object -> {
+                                final Object result = this.functions.build().get(functionKey).apply(object);
+                                if(customPredicate.apply(result)){
+                                    return result;
+                                }
+                                throw new RuntimeException();
+                            };
+                            return genericInvocation(jsonObject.toString(), functionParametersAsString, predicateWrappedFunction);
+                        }
+                    }
+                    return genericInvocation(jsonObject.toString(), functionParametersAsString, this.functions.build().get(functionKey));
                 }
                 try{
                     return method.invoke(proxy, args);
@@ -294,6 +339,51 @@ public class Jelly {
                     }
                 }).collect(Collectors.toList());
             return function.apply(parameters);
+        }
+    }
+
+    public static Type jsonToType(InputStream inputStream){
+        try{
+            byte[] bytes = new byte[inputStream.available()];
+            inputStream.read(bytes);
+            inputStream.close();
+            final JsonObject typeJson = new JsonParser()
+                    .parse(new String(bytes))
+                    .getAsJsonObject();
+            final JsonArray types = typeJson
+                    .get("_types")
+                    .getAsJsonArray();
+            return (Type) () -> range(0, types.size())
+                    .mapToObj(index -> {
+                        final String key = types.get(index).getAsJsonObject().get(index + "").getAsString();
+                        final JsonObject currentType = typeJson.get(key).getAsJsonObject();
+                        final JsonArray cannotBe = currentType.get("cannotBe").getAsJsonArray();
+                        switch(currentType.get("base").getAsString().toLowerCase()){
+                            case "integer" :
+                                if(cannotBe.size() > 0){
+                                    final CustomPredicate<Integer> customPredicate = new CustomPredicate<>(Integer.class)
+                                            .addAll(range(0, cannotBe.size())
+                                                    .mapToObj(i -> cannotBe.get(i).getAsString())
+                                                    .map(string -> (CustomPredicate.CannotBe<Integer>) () ->  Integer.valueOf(string))
+                                                    .collect(toList()));
+                                    return (BoundSingleton<Integer>) () -> entry(Integer.class, customPredicate);
+                                }
+                                throw new RuntimeException();
+                            case "string" :
+                                if(cannotBe.size() > 0){
+                                    final CustomPredicate<String> customPredicate = new CustomPredicate<>(String.class)
+                                            .addAll(range(0, cannotBe.size())
+                                                    .mapToObj(i -> cannotBe.get(i).getAsString())
+                                                    .map(string -> (CustomPredicate.CannotBe<String>) () ->  string)
+                                                    .collect(toList()));
+                                    return (BoundSingleton<String>) () -> entry(String.class, customPredicate);
+                                }
+                            default :
+                                throw new RuntimeException();
+                        }
+                    }).collect(toList());
+        }catch(Exception exception){
+            throw new RuntimeException(exception);
         }
     }
 

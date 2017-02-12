@@ -45,4 +45,17 @@ public class CustomPredicateTest {
              && expectedPredicateId.get(index).getValue().getClass().getName().equals(actualPredicateId.get(index).getValue().getClass().getName()))
             .count() == expectedPredicateId.size());
     }
+
+    @Test
+    public void greaterThanCheck(){
+        assertTrue(new CustomPredicate<>(Integer.class)
+            .greaterThan(Integer.class, 23)
+            .apply(25));
+        assertFalse(new CustomPredicate<>(Integer.class)
+            .greaterThan(Integer.class, 23)
+            .apply(22));
+        assertFalse(new CustomPredicate<>(Integer.class)
+            .greaterThan(Integer.class, 23)
+            .apply(23));
+    }
 }

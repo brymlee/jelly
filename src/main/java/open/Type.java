@@ -1,8 +1,17 @@
 package open;
 
+import com.google.gson.JsonArray;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
+import open.CustomPredicate.CannotBe;
+
+import java.io.InputStream;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
+import static java.util.stream.Collectors.toList;
+import static java.util.stream.IntStream.range;
 import static open.CustomPredicate.entry;
 
 /**
@@ -45,7 +54,7 @@ public interface Type {
                     throw new RuntimeException();
                 }
             }).filter(type -> type != null)
-            .collect(Collectors.toList());
+            .collect(toList());
         if(types.size() == 1){
             return types.get(0);
         }else{
@@ -66,7 +75,7 @@ public interface Type {
                        return (InstantiatedBoundSingleton<T>) () -> entry(boundSingletonToChange, t);
                     }
                     return type;
-                }).collect(Collectors.toList());
+                }).collect(toList());
         }
         return null;
     }
@@ -78,4 +87,7 @@ public interface Type {
         }
         return null;
     }
+
+
+
 }
